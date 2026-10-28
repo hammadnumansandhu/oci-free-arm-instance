@@ -1,8 +1,8 @@
 name: Try to Create OCI VM
-# Runs every 10 minutes
+# Runs every 5 minutes
 on:
   schedule:
-    - cron: "*/10 * * * *"
+    - cron: "*/5 * * * *"
   workflow_dispatch:
 
 env:
@@ -55,12 +55,12 @@ jobs:
           echo "region=${{ env.OCI_CLI_REGION }}" >> /home/runner/.oci/config
           # Write SSH Key
           echo "${{ secrets.SSH_PUBLIC_KEY }}" > /home/runner/my_ssh_key.pub
-          # Launch VM (50GB Boot Volume, 1 OCPU / 6 GB, Always Free A1.Flex)
+          # Launch VM (50GB Boot Volume, 2 OCPU / 12 GB, Always Free A1.Flex)
           OCI_OUTPUT=$(oci compute instance launch \
             --compartment-id "$COMPARTMENT_ID" \
             --availability-domain "$AD_NAME" \
             --shape "VM.Standard.A1.Flex" \
-            --shape-config '{"ocpus":1,"memoryInGBs":6}' \
+            --shape-config '{"ocpus":2,"memoryInGBs":12}' \
             --subnet-id "$OCI_SUBNET_ID" \
             --image-id "$IMAGE_ID" \
             --ssh-authorized-keys-file "/home/runner/my_ssh_key.pub" \
@@ -90,7 +90,7 @@ jobs:
           echo "OCI CLI version:"
           oci --version || true
           echo "Availability domains:"
-          oci iam availability-domain list --compartment-id "$COMPARTMENT_ID" --query "data[].name" --output text || echo "AD list failed"
+          oci iam availability-domain list --compartment-id "$COMPARTMENT_ID" --query "data[].name" --output json || echo "AD list failed"
           if echo "${{ steps.create_vm.outputs.log_data }}" | grep -q '"lifecycle-state": "PROVISIONING"'; then
             echo "VM creation started."
           else
