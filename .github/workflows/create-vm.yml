@@ -93,3 +93,17 @@ jobs:
             echo "Real Error Detected. Failing the workflow."
             exit 1
           fi
+
+        - name: Diagnose OCI access (read-only)
+          if: always()
+          run: |
+            echo "OCI CLI version:"
+            oci --version || true
+            echo "Availability domains:"
+            oci iam availability-domain list --compartment-id "$COMPARTMENT_ID" --query "data[].name" --output text || echo "AD list failed"
+            if echo "${{ steps.create_vm.outputs.log_data }}" | grep -q '"lifecycle-state": "PROVISIONING"'; then
+              echo "VM creation started."
+            else
+              echo "Launch response:"
+              echo "${{ steps.create_vm.outputs.log_data }}"
+            fi
