@@ -8,13 +8,11 @@ on:
 env:
   # 1. Suppress warnings to keep logs clean
   SUPPRESS_LABEL_WARNING: true
-
   # 2. Osaka configuration from GitHub Secrets (no IDs hardcoded in this file)
   OCI_CLI_REGION: ${{ secrets.OCI_CLI_REGION }}
   AD_NAME: ${{ secrets.AD_NAME }}
   IMAGE_ID: ${{ secrets.IMAGE_ID }}
   OCI_SUBNET_ID: ${{ secrets.OCI_SUBNET_ID }}
-
   # 3. Secrets
   COMPARTMENT_ID: ${{ secrets.OCI_COMPARTMENT_ID }}
   OCI_CLI_USER: ${{ secrets.OCI_CLI_USER }}
@@ -41,17 +39,13 @@ jobs:
         continue-on-error: true
         run: |
           set -o pipefail
-
           # Install OCI CLI
           pip install oci-cli
-
           # Create Directory
           mkdir -p /home/runner/.oci
-
           # Write Key File
           echo "${{ secrets.OCI_CLI_KEY_CONTENT }}" > /home/runner/.oci/oci_api_key.pem
           chmod 600 /home/runner/.oci/oci_api_key.pem
-
           # Write Config File (Absolute Paths)
           echo "[DEFAULT]" > /home/runner/.oci/config
           echo "user=${{ secrets.OCI_CLI_USER }}" >> /home/runner/.oci/config
@@ -59,10 +53,8 @@ jobs:
           echo "fingerprint=${{ secrets.OCI_CLI_FINGERPRINT }}" >> /home/runner/.oci/config
           echo "key_file=/home/runner/.oci/oci_api_key.pem" >> /home/runner/.oci/config
           echo "region=${{ env.OCI_CLI_REGION }}" >> /home/runner/.oci/config
-
           # Write SSH Key
           echo "${{ secrets.SSH_PUBLIC_KEY }}" > /home/runner/my_ssh_key.pub
-
           # Launch VM (50GB Boot Volume, 1 OCPU / 6 GB, Always Free A1.Flex)
           OCI_OUTPUT=$(oci compute instance launch \
             --compartment-id "$COMPARTMENT_ID" \
@@ -75,12 +67,10 @@ jobs:
             --assign-public-ip true \
             --display-name "coolify-vm" \
             --boot-volume-size-in-gbs 50 2>&1 || true)
-
           # Store Log for later steps
           echo "log_data<<EOF" >> $GITHUB_OUTPUT
           echo "$OCI_OUTPUT" >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
-
           # --- SMART CHECK LOGIC ---
           if echo "$OCI_OUTPUT" | grep -q '"lifecycle-state": "PROVISIONING"'; then
             echo "VM is being created."
@@ -94,16 +84,16 @@ jobs:
             exit 1
           fi
 
-        - name: Diagnose OCI access (read-only)
-          if: always()
-          run: |
-            echo "OCI CLI version:"
-            oci --version || true
-            echo "Availability domains:"
-            oci iam availability-domain list --compartment-id "$COMPARTMENT_ID" --query "data[].name" --output text || echo "AD list failed"
-            if echo "${{ steps.create_vm.outputs.log_data }}" | grep -q '"lifecycle-state": "PROVISIONING"'; then
-              echo "VM creation started."
-            else
-              echo "Launch response:"
-              echo "${{ steps.create_vm.outputs.log_data }}"
-            fi
+      - name: Diagnose OCI access (read-only)
+        if: always()
+        run: |
+          echo "OCI CLI version:"
+          oci --version || true
+          echo "Availability domains:"
+          oci iam availability-domain list --compartment-id "$COMPARTMENT_ID" --query "data[].name" --output text || echo "AD list failed"
+          if echo "${{ steps.create_vm.outputs.log_data }}" | grep -q '"lifecycle-state": "PROVISIONING"'; then
+            echo "VM creation started."
+          else
+            echo "Launch response:"
+            echo "${{ steps.create_vm.outputs.log_data }}"
+          fi
